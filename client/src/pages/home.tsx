@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { Link, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, History, LogOut, User } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { VerificationForm } from "@/components/verification-form";
 import { VerificationResults } from "@/components/verification-results";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import type { VerificationRequest, VerificationResult } from "@shared/schema";
 
 export default function Home() {
   const [result, setResult] = useState<VerificationResult | null>(null);
+  const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
 
   const verificationMutation = useMutation({
@@ -68,8 +72,39 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
-              <Badge variant="secondary" className="font-medium">UniBrasil 2025</Badge>
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-2">
+                <Badge variant="secondary" className="font-medium">UniBrasil 2025</Badge>
+              </div>
+              
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2" data-testid="user-menu">
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:block">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link href="/history" className="flex items-center space-x-2 w-full" data-testid="link-history">
+                        <History className="h-4 w-4" />
+                        <span>Histórico</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => logoutMutation.mutate()}
+                      disabled={logoutMutation.isPending}
+                      className="flex items-center space-x-2"
+                      data-testid="button-logout"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sair</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </div>

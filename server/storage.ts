@@ -16,7 +16,7 @@ import {
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, and, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -166,21 +166,55 @@ export class PostgresStorage implements IStorage {
     };
   }
 
-  // User verification history
-  async getUserVerificationHistory(userId: string, limit: number = 10, offset: number = 0): Promise<{
+  // User verification history with filtering
+  async getUserVerificationHistory(
+    userId: string, 
+    limit: number = 10, 
+    offset: number = 0,
+    filters?: {
+      classification?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    }
+  ): Promise<{
     verifications: Array<VerificationRequestDB & { result?: VerificationResultDB }>;
     total: number;
   }> {
-    // Get total count
-    const [totalResult] = await this.db.select({ count: count() }).from(verificationRequestsTable).where(eq(verificationRequestsTable.userId, userId));
+    // Build base conditions
+    const conditions = [eq(verificationRequestsTable.userId, userId)];
     
-    // Get requests with results
-    const requests = await this.db.select().from(verificationRequestsTable)
-      .where(eq(verificationRequestsTable.userId, userId))
-      .orderBy(desc(verificationRequestsTable.createdAt))
-      .limit(limit)
-      .offset(offset);
-
+    // Add date filters
+    if (filters?.dateFrom) {
+      conditions.push(gte(verificationRequestsTable.createdAt, new Date(filters.dateFrom)));
+    }
+    if (filters?.dateTo) {
+      const dateTo = new Date(filters.dateTo);
+      dateTo.setHours(23, 59, 59, 999); // Include the entire day
+      conditions.push(lte(verificationRequestsTable.createdAt, dateTo));
+    }
+    
+    // Build where clause
+    const whereClause = and(...conditions);
+    
+    // Get requests based on filters
+    let requestsQuery = this.db.select().from(verificationRequestsTable)
+      .where(whereClause)
+      .orderBy(desc(verificationRequestsTable.createdAt));
+    
+    // Apply search and classification filters after joining with results
+    let requests = await requestsQuery;
+    
+    // Apply search filter to content and URL
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      requests = requests.filter(request => 
+        request.content.toLowerCase().includes(searchLower) ||
+        (request.url && request.url.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    // Get results for all requests first
     const verificationsWithResults = await Promise.all(
       requests.map(async (request) => {
         const [result] = await this.db.select().from(verificationResultsTable)
@@ -188,11 +222,66 @@ export class PostgresStorage implements IStorage {
         return { ...request, result };
       })
     );
+    
+    // Apply classification filter
+    let filteredVerifications = verificationsWithResults;
+    if (filters?.classification) {
+      filteredVerifications = verificationsWithResults.filter(verification => 
+        verification.result?.classification === filters.classification
+      );
+    }
+    
+    // Calculate total after filtering
+    const total = filteredVerifications.length;
+    
+    // Apply pagination
+    const paginatedVerifications = filteredVerifications.slice(offset, offset + limit);
 
     return {
-      verifications: verificationsWithResults,
-      total: totalResult.count
+      verifications: paginatedVerifications,
+      total
     };
+  }
+
+  // Get single verification by ID for a specific user
+  async getVerificationByIdForUser(verificationId: string, userId: string): Promise<(VerificationRequestDB & { result?: VerificationResultDB }) | null> {
+    const [request] = await this.db.select().from(verificationRequestsTable)
+      .where(and(
+        eq(verificationRequestsTable.id, verificationId),
+        eq(verificationRequestsTable.userId, userId)
+      ));
+    
+    if (!request) return null;
+    
+    const [result] = await this.db.select().from(verificationResultsTable)
+      .where(eq(verificationResultsTable.requestId, request.id));
+    
+    return { ...request, result };
+  }
+
+  // Delete verification for a specific user
+  async deleteVerificationForUser(verificationId: string, userId: string): Promise<boolean> {
+    // First check if the verification belongs to the user
+    const [request] = await this.db.select().from(verificationRequestsTable)
+      .where(and(
+        eq(verificationRequestsTable.id, verificationId),
+        eq(verificationRequestsTable.userId, userId)
+      ));
+    
+    if (!request) return false;
+    
+    // Delete the result first (due to foreign key constraint)
+    await this.db.delete(verificationResultsTable)
+      .where(eq(verificationResultsTable.requestId, verificationId));
+    
+    // Delete the request
+    const deleteResult = await this.db.delete(verificationRequestsTable)
+      .where(and(
+        eq(verificationRequestsTable.id, verificationId),
+        eq(verificationRequestsTable.userId, userId)
+      ));
+    
+    return deleteResult.rowCount! > 0;
   }
 
   async getVerificationStats() {

@@ -557,6 +557,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Verification history endpoints
+  app.get("/api/history", async (req, res) => {
+    try {
+      // Check authentication
+      if (!req.user?.id) {
+        return res.status(401).json({
+          success: false,
+          error: "Usuário não autenticado"
+        });
+      }
+
+      // Parse pagination and filtering parameters
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(50, Math.max(5, parseInt(req.query.limit as string) || 10));
+      const offset = (page - 1) * limit;
+      
+      // Parse filter parameters
+      const classification = req.query.classification as string;
+      const search = req.query.search as string;
+      const dateFrom = req.query.dateFrom as string;
+      const dateTo = req.query.dateTo as string;
+
+      // Get user verification history with filters
+      const historyData = await storage.getUserVerificationHistory(
+        req.user.id, 
+        limit, 
+        offset,
+        {
+          classification,
+          search,
+          dateFrom,
+          dateTo
+        }
+      );
+
+      res.json({
+        success: true,
+        data: {
+          verifications: historyData.verifications,
+          pagination: {
+            total: historyData.total,
+            page,
+            limit,
+            totalPages: Math.ceil(historyData.total / limit),
+            hasNext: offset + limit < historyData.total,
+            hasPrev: page > 1
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error("History retrieval error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erro ao recuperar histórico de verificações"
+      });
+    }
+  });
+
+  // Get single verification by ID
+  app.get("/api/history/:id", async (req, res) => {
+    try {
+      // Check authentication
+      if (!req.user?.id) {
+        return res.status(401).json({
+          success: false,
+          error: "Usuário não autenticado"
+        });
+      }
+
+      const verificationId = req.params.id;
+      const verification = await storage.getVerificationByIdForUser(verificationId, req.user.id);
+
+      if (!verification) {
+        return res.status(404).json({
+          success: false,
+          error: "Verificação não encontrada"
+        });
+      }
+
+      res.json({
+        success: true,
+        data: verification
+      });
+
+    } catch (error) {
+      console.error("Single verification retrieval error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erro ao recuperar verificação"
+      });
+    }
+  });
+
+  // Delete verification from history
+  app.delete("/api/history/:id", async (req, res) => {
+    try {
+      // Check authentication
+      if (!req.user?.id) {
+        return res.status(401).json({
+          success: false,
+          error: "Usuário não autenticado"
+        });
+      }
+
+      const verificationId = req.params.id;
+      const deleted = await storage.deleteVerificationForUser(verificationId, req.user.id);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          error: "Verificação não encontrada ou você não tem permissão para deletá-la"
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Verificação removida do histórico com sucesso"
+      });
+
+    } catch (error) {
+      console.error("Verification deletion error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Erro ao remover verificação do histórico"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
