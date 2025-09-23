@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <meta name="description" content="{{ description }}">
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- TailwindCSS Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a'
+                        },
+                        success: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a'
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            500: '#ef4444',
+                            600: '#dc2626'
+                        },
+                        warning: {
+                            50: '#fffbeb',
+                            500: '#f59e0b',
+                            600: '#d97706'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="h-full bg-gradient-to-br from-blue-50 to-indigo-100 font-sans" x-data="validaiApp()">
+    
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">V</span>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">ValidaÍ</h1>
+                </div>
+                <div class="text-sm text-gray-500">
+                    Sistema de Verificação de Notícias
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Hero Section -->
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold text-gray-900 mb-4">
+                Verifique a veracidade de notícias
+                <span class="text-blue-600">em tempo real</span>
+            </h2>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Sistema inteligente para combater a desinformação. 
+                Cole um link ou texto de notícia e receba uma análise completa com fontes confiáveis.
+            </p>
+        </div>
+
+        <!-- Verification Form -->
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 mb-8">
+            <form @submit.prevent="verifyContent()" class="space-y-6">
+                
+                <!-- Input Type Selection -->
+                <div class="flex space-x-4 mb-6">
+                    <button type="button" 
+                            @click="inputType = 'text'" 
+                            :class="inputType === 'text' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+                            class="px-4 py-2 rounded-lg font-medium transition-colors">
+                        📝 Texto
+                    </button>
+                    <button type="button" 
+                            @click="inputType = 'url'"
+                            :class="inputType === 'url' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+                            class="px-4 py-2 rounded-lg font-medium transition-colors">
+                        🔗 Link
+                    </button>
+                </div>
+
+                <!-- Text Input -->
+                <div x-show="inputType === 'text'" x-transition>
+                    <label for="textInput" class="block text-sm font-medium text-gray-700 mb-2">
+                        Texto da notícia para verificar
+                    </label>
+                    <textarea id="textInput" 
+                              x-model="textContent"
+                              placeholder="Cole aqui o texto da notícia que deseja verificar..."
+                              class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-32 resize-y"
+                              maxlength="10000"></textarea>
+                    <div class="text-sm text-gray-500 mt-1">
+                        <span x-text="textContent.length"></span>/10.000 caracteres
+                    </div>
+                </div>
+
+                <!-- URL Input -->
+                <div x-show="inputType === 'url'" x-transition>
+                    <label for="urlInput" class="block text-sm font-medium text-gray-700 mb-2">
+                        URL da notícia para verificar
+                    </label>
+                    <input type="url" 
+                           id="urlInput"
+                           x-model="urlContent"
+                           placeholder="https://exemplo.com/noticia"
+                           class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" 
+                        :disabled="isLoading || (!textContent.trim() && !urlContent.trim())"
+                        class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                    <span x-show="!isLoading">🔍 Verificar Agora</span>
+                    <span x-show="isLoading" x-transition>
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Verificando...
+                    </span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        <div x-show="result" x-transition class="space-y-6">
+            
+            <!-- Classification Badge -->
+            <div class="text-center">
+                <span x-show="result && result.classification === 'VERDADEIRO'" 
+                      class="inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-green-100 text-green-800">
+                    ✅ VERDADEIRO
+                </span>
+                <span x-show="result && result.classification === 'FALSO'" 
+                      class="inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-red-100 text-red-800">
+                    ❌ FALSO
+                </span>
+                <span x-show="result && result.classification === 'PARCIALMENTE_VERDADEIRO'" 
+                      class="inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-yellow-100 text-yellow-800">
+                    ⚠️ PARCIALMENTE VERDADEIRO
+                </span>
+                <span x-show="result && result.classification === 'NAO_VERIFICAVEL'" 
+                      class="inline-flex items-center px-6 py-3 rounded-full text-lg font-semibold bg-gray-100 text-gray-800">
+                    ❓ NÃO VERIFICÁVEL
+                </span>
+            </div>
+
+            <!-- Result Details -->
+            <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 space-y-6">
+                
+                <!-- Confidence -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">📊 Nível de Confiança</h3>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex-1 bg-gray-200 rounded-full h-3">
+                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" 
+                                 :style="`width: ${result ? result.confidence_percentage : 0}%`"></div>
+                        </div>
+                        <span class="text-lg font-semibold text-gray-900" x-text="result ? result.confidence_percentage + '%' : ''"></span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1" x-text="result ? 'Confiança: ' + result.confidence_level : ''"></p>
+                </div>
+
+                <!-- Explanation -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">📝 Explicação Detalhada</h3>
+                    <p class="text-gray-700 leading-relaxed" x-text="result ? result.explanation : ''"></p>
+                </div>
+
+                <!-- Sources -->
+                <div x-show="result && result.sources && result.sources.length > 0">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-3">📚 Fontes Consultadas</h3>
+                    <div class="space-y-3">
+                        <template x-for="source in (result ? result.sources : [])" :key="source.name">
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h4 class="font-medium text-gray-900" x-text="source.name"></h4>
+                                        <p class="text-sm text-gray-600 mt-1" x-text="source.description"></p>
+                                        <a x-show="source.url" 
+                                           :href="source.url" 
+                                           target="_blank" 
+                                           class="text-blue-600 hover:text-blue-800 text-sm mt-2 inline-flex items-center">
+                                            🔗 Ver fonte
+                                        </a>
+                                    </div>
+                                    <span x-show="source.year" 
+                                          class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded" 
+                                          x-text="source.year"></span>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="grid md:grid-cols-2 gap-6 pt-6 border-t border-gray-200">
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">🗓️ Contexto Temporal</h4>
+                        <p class="text-sm text-gray-600" x-text="result ? result.temporal_context : ''"></p>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">⚖️ Viés Detectado</h4>
+                        <p class="text-sm text-gray-600" x-text="result ? result.detected_bias : ''"></p>
+                    </div>
+                </div>
+
+                <!-- Observations -->
+                <div x-show="result && result.observations" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 class="font-medium text-yellow-800 mb-2">⚠️ Observações Importantes</h4>
+                    <p class="text-sm text-yellow-700" x-text="result ? result.observations : ''"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div x-show="error" x-transition class="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <span class="text-red-400 text-xl">❌</span>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-red-800">Erro na Verificação</h3>
+                    <p class="mt-2 text-sm text-red-700" x-text="error"></p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center text-sm text-gray-500">
+                <p class="mb-2">
+                    <strong>ValidaÍ</strong> - Sistema de Verificação de Notícias
+                </p>
+                <p>
+                    Desenvolvido para PROEX IV - IA Aplicada - UniBrasil 🎓
+                </p>
+                <div class="mt-4 flex justify-center space-x-6">
+                    <a href="/api/docs" class="text-blue-600 hover:text-blue-800">📚 API Docs</a>
+                    <a href="/health" class="text-blue-600 hover:text-blue-800">🔍 Health Check</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Alpine.js App Logic -->
+    <script>
+        function validaiApp() {
+            return {
+                inputType: 'text',
+                textContent: '',
+                urlContent: '',
+                isLoading: false,
+                result: null,
+                error: null,
+
+                async verifyContent() {
+                    this.isLoading = true;
+                    this.error = null;
+                    this.result = null;
+
+                    try {
+                        const payload = {};
+                        
+                        if (this.inputType === 'text' && this.textContent.trim()) {
+                            payload.text = this.textContent.trim();
+                        } else if (this.inputType === 'url' && this.urlContent.trim()) {
+                            payload.url = this.urlContent.trim();
+                        }
+
+                        const response = await fetch('/api/v1/verify', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.status === 'success') {
+                            this.result = data.result;
+                        } else {
+                            throw new Error(data.error_message || 'Erro na verificação');
+                        }
+
+                    } catch (err) {
+                        this.error = err.message || 'Erro inesperado. Tente novamente.';
+                        console.error('Verification error:', err);
+                    } finally {
+                        this.isLoading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
