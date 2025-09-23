@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime);
 
       // Store the result
-      const storedResult = await storage.createVerificationResult(verificationResult);
+      const storedResult = await storage.createVerificationResult(verificationResult, storedRequest.id);
 
       const response: VerificationResponse = {
         success: true,

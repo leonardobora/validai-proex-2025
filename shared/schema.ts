@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
+import { pgTable, varchar, text, integer, timestamp, boolean, jsonb, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Verification classification enum
 export const VerificationClassification = z.enum([
@@ -78,6 +80,54 @@ export type VerificationResponse = z.infer<typeof VerificationResponseSchema>;
 // Insert schemas
 export const insertVerificationRequestSchema = VerificationRequestSchema;
 export const insertVerificationResultSchema = VerificationResultSchema;
+
+// Database tables
+export const usersTable = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull().unique(),
+  passwordHash: varchar("password_hash").notNull(),
+  name: varchar("name").notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const verificationRequestsTable = pgTable("verification_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => usersTable.id),
+  inputType: varchar("input_type", { enum: ["text", "url"] }).notNull(),
+  content: text("content").notNull(),
+  url: varchar("url"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+export const verificationResultsTable = pgTable("verification_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestId: varchar("request_id").references(() => verificationRequestsTable.id).notNull(),
+  classification: varchar("classification", { enum: ["VERDADEIRO", "FALSO", "PARCIALMENTE_VERDADEIRO", "NAO_VERIFICAVEL"] }).notNull(),
+  confidencePercentage: integer("confidence_percentage").notNull(),
+  confidenceLevel: varchar("confidence_level", { enum: ["ALTO", "MEDIO", "BAIXO"] }).notNull(),
+  explanation: text("explanation").notNull(),
+  temporalContext: text("temporal_context").notNull(),
+  detectedBias: text("detected_bias").notNull(),
+  sources: jsonb("sources").notNull(),
+  observations: text("observations"),
+  processingTimeMs: integer("processing_time_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// Drizzle insert schemas
+export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVerificationRequestSchemaDB = createInsertSchema(verificationRequestsTable).omit({ id: true, createdAt: true });
+export const insertVerificationResultSchemaDB = createInsertSchema(verificationResultsTable).omit({ id: true, createdAt: true });
+
+// Database types
+export type User = typeof usersTable.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type VerificationRequestDB = typeof verificationRequestsTable.$inferSelect;
+export type InsertVerificationRequestDB = z.infer<typeof insertVerificationRequestSchemaDB>;
+export type VerificationResultDB = typeof verificationResultsTable.$inferSelect;
+export type InsertVerificationResultDB = z.infer<typeof insertVerificationResultSchemaDB>;
 
 // Export types
 export type InsertVerificationRequest = z.infer<typeof insertVerificationRequestSchema>;
