@@ -13,14 +13,15 @@ import {
 } from "@shared/schema";
 
 // Perplexity API integration
-async function callPerplexityAPI(content: string, startTime: number): Promise<VerificationResult> {
+async function callPerplexityAPI(content: string, startTime: number, metadata?: any): Promise<VerificationResult> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   
   if (!apiKey) {
     throw new Error("PERPLEXITY_API_KEY não configurada");
   }
 
-  const systemPrompt = `Você é ValidaÍ, sistema de verificação de notícias da UniBrasil. Analise a informação fornecida e retorne APENAS um JSON válido com esta estrutura exata:
+  // Construct enhanced system prompt with metadata context
+  let systemPrompt = `Você é ValidaÍ, sistema de verificação de notícias da UniBrasil. Analise a informação fornecida e retorne APENAS um JSON válido com esta estrutura exata:
 
 {
   "classification": "VERDADEIRO|FALSO|PARCIALMENTE_VERDADEIRO|NAO_VERIFICAVEL",
@@ -46,6 +47,20 @@ Diretrizes:
 - Seja neutro e didático
 - Explique claramente o motivo da classificação
 - Indique limitações da análise`;
+
+  // Add metadata context if available
+  if (metadata) {
+    systemPrompt += `
+
+CONTEXTO DA FONTE:
+- Título da página: ${metadata.title || 'Não disponível'}
+- Descrição: ${metadata.description || 'Não disponível'}
+- URL origem: ${metadata.sourceURL || 'Não disponível'}
+- Idioma detectado: ${metadata.language || 'Não determinado'}
+- Método de extração: ${metadata.extractionMethod || 'Não especificado'}
+
+Use essas informações para melhorar a análise de credibilidade da fonte.`;
+  }
 
   const response = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
@@ -130,55 +145,313 @@ Diretrizes:
   };
 }
 
-// Firecrawl integration for URL scraping
-async function scrapeURL(url: string): Promise<string> {
+import * as cheerio from 'cheerio';
+
+// Simple in-memory cache for scraped content (1 hour TTL)
+const scrapeCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+function getCachedContent(url: string): { content: string; metadata: any } | null {
+  const cached = scrapeCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  scrapeCache.delete(url);
+  return null;
+}
+
+function setCachedContent(url: string, data: { content: string; metadata: any }): void {
+  scrapeCache.set(url, { data, timestamp: Date.now() });
+  
+  // Clean up old entries
+  if (scrapeCache.size > 100) {
+    const entries = Array.from(scrapeCache.entries());
+    const cutoff = Date.now() - CACHE_TTL;
+    entries.forEach(([key, value]) => {
+      if (value.timestamp < cutoff) {
+        scrapeCache.delete(key);
+      }
+    });
+  }
+}
+
+// Enhanced web scraping functionality with multiple extraction methods
+async function scrapeURL(url: string): Promise<{ content: string; metadata: any }> {
+  const startTime = Date.now();
+  
+  // Validate URL format
+  try {
+    const parsedUrl = new URL(url);
+    // Check for supported protocols
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      throw new Error('Apenas URLs HTTP e HTTPS são suportadas.');
+    }
+    // Check for suspicious URLs
+    if (parsedUrl.hostname.includes('localhost') || parsedUrl.hostname.includes('127.0.0.1')) {
+      throw new Error('URLs locais não são permitidas por motivos de segurança.');
+    }
+  } catch (error) {
+    throw new Error(`URL fornecida é inválida: ${error}`);
+  }
+
+  // Check cache first
+  const cached = getCachedContent(url);
+  if (cached) {
+    return {
+      content: cached.content,
+      metadata: {
+        ...cached.metadata,
+        fromCache: true,
+        processingTime: Date.now() - startTime
+      }
+    };
+  }
+
+  // Try Firecrawl first if API key is available
   const firecrawlKey = process.env.FIRECRAWL_API_KEY;
   
-  if (!firecrawlKey) {
-    // Fallback: simple fetch if Firecrawl not available
+  if (firecrawlKey) {
     try {
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'ValidaI-Bot/1.0'
-        }
-      });
-      const html = await response.text();
-      // Basic text extraction (in production, use proper HTML parsing)
-      const textContent = html
-        .replace(/<script[^>]*>.*?<\/script>/gi, '')
-        .replace(/<style[^>]*>.*?<\/style>/gi, '')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      return textContent.substring(0, 5000); // Limit content
+      const firecrawlResult = await extractWithFirecrawl(url, firecrawlKey);
+      if (firecrawlResult.content.length > 100) {
+        return {
+          content: firecrawlResult.content,
+          metadata: {
+            ...firecrawlResult.metadata,
+            extractionMethod: 'firecrawl',
+            processingTime: Date.now() - startTime
+          }
+        };
+      }
     } catch (error) {
-      throw new Error(`Erro ao acessar URL: ${error}`);
+      console.warn('Firecrawl extraction failed, falling back to cheerio:', error);
     }
   }
 
+  // Fallback to enhanced HTML parsing with cheerio
   try {
-    const response = await fetch("https://api.firecrawl.dev/v0/scrape", {
-      method: "POST",
+    const cheerioResult = await extractWithCheerio(url);
+    const finalResult = {
+      content: cheerioResult.content,
+      metadata: {
+        ...cheerioResult.metadata,
+        extractionMethod: 'cheerio',
+        processingTime: Date.now() - startTime
+      }
+    };
+    
+    // Cache successful extraction
+    setCachedContent(url, finalResult);
+    
+    return finalResult;
+  } catch (error) {
+    console.error('All extraction methods failed:', error);
+    throw new Error(`Não foi possível extrair conteúdo da URL. Verifique se o site está acessível e tente novamente. Detalhes: ${error}`);
+  }
+}
+
+// Firecrawl extraction with enhanced error handling
+async function extractWithFirecrawl(url: string, apiKey: string): Promise<{ content: string; metadata: any }> {
+  const response = await fetch("https://api.firecrawl.dev/v0/scrape", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      url,
+      formats: ["markdown", "html"],
+      onlyMainContent: true,
+      includeTags: ["title", "meta"],
+      excludeTags: ["script", "style", "nav", "footer", "header", "aside"],
+      waitFor: 2000 // Wait for dynamic content
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Firecrawl API error (${response.status}): ${errorData.error || 'Unknown error'}`);
+  }
+
+  const data = await response.json();
+  
+  if (!data.success) {
+    throw new Error(`Firecrawl scraping failed: ${data.error || 'Unknown error'}`);
+  }
+
+  const content = data.markdown || data.html || data.content || '';
+  if (content.length < 50) {
+    throw new Error('Conteúdo extraído muito curto, possivelmente bloqueado pelo site');
+  }
+
+  const finalResult = {
+    content: content.substring(0, 8000), // Increased limit for better context
+    metadata: {
+      title: data.metadata?.title || '',
+      description: data.metadata?.description || '',
+      language: data.metadata?.language || '',
+      sourceURL: data.metadata?.sourceURL || url,
+      statusCode: data.metadata?.statusCode || 200
+    }
+  };
+  
+  // Cache successful Firecrawl extraction
+  setCachedContent(url, finalResult);
+  
+  return finalResult;
+}
+
+// Enhanced cheerio-based extraction for fallback
+async function extractWithCheerio(url: string): Promise<{ content: string; metadata: any }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  
+  try {
+    const response = await fetch(url, {
       headers: {
-        "Authorization": `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json"
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate',
+        'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify({
-        url,
-        formats: ["markdown"],
-        onlyMainContent: true
-      })
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`Erro Firecrawl: ${response.status}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.markdown || data.content || "";
-  } catch (error) {
-    throw new Error(`Erro ao extrair conteúdo da URL: ${error}`);
+    const html = await response.text();
+    if (html.length < 100) {
+      throw new Error('Resposta muito curta, possivelmente bloqueada');
+    }
+    
+    // Validate that we got HTML content
+    const lowerHtml = html.toLowerCase();
+    if (!lowerHtml.includes('<html') && !lowerHtml.includes('<!doctype') && !lowerHtml.includes('<body')) {
+      // Check if it might be a redirect or JSON response
+      if (lowerHtml.includes('json') || html.trim().startsWith('{')) {
+        throw new Error('URL retornou dados JSON ao invés de HTML - pode ser uma API');
+      }
+      if (lowerHtml.includes('location.href') || lowerHtml.includes('window.location')) {
+        throw new Error('Página contém redirecionamento JavaScript - conteúdo não acessível');
+      }
+      throw new Error('Resposta não parece ser HTML válido');
+    }
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
+    if (fetchError.name === 'AbortError') {
+      throw new Error('Timeout ao acessar a URL - o site demorou muito para responder');
+    }
+    throw fetchError;
   }
+
+  const $ = cheerio.load(html);
+
+  // Remove unwanted elements
+  $('script, style, nav, footer, header, aside, .ad, .advertisement, .social-share').remove();
+  
+  // Extract metadata
+  const title = $('title').text().trim() || 
+                $('meta[property="og:title"]').attr('content') || 
+                $('h1').first().text().trim();
+  
+  const description = $('meta[name="description"]').attr('content') || 
+                     $('meta[property="og:description"]').attr('content') || '';
+  
+  const language = $('html').attr('lang') || 
+                  $('meta[http-equiv="content-language"]').attr('content') || 'pt-BR';
+
+  // Prioritized content extraction
+  let content = '';
+  
+  // Try article content first - including Brazilian news sites
+  const articleSelectors = [
+    'article',
+    '[role="main"]',
+    '.content',
+    '.post-content', 
+    '.article-content',
+    '.entry-content',
+    '.main-content',
+    '.materia-conteudo', // Globo.com
+    '.content-text', // UOL
+    '.story-body', // BBC Brasil
+    '.post-text', // Generic blog pattern
+    '.news-content', // Generic news pattern
+    '.article-body',
+    '[data-module="ArticleBody"]' // Some news sites
+  ];
+  
+  for (const selector of articleSelectors) {
+    const articleContent = $(selector).text().trim();
+    if (articleContent.length > content.length) {
+      content = articleContent;
+    }
+  }
+  
+  // Fallback to body if no specific content found
+  if (content.length < 200) {
+    content = $('body').text().trim();
+  }
+  
+  // Enhanced content cleaning
+  content = content
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/\n\s*\n/g, '\n\n') // Normalize line breaks
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .trim();
+    
+  // Additional content quality checks
+  const wordCount = content.split(/\s+/).filter(word => word.length > 2).length;
+  if (wordCount < 20) {
+    throw new Error('Conteúdo muito curto - menos de 20 palavras úteis extraídas');
+  }
+  
+  // Check for common error patterns in Brazilian Portuguese
+  const errorPatterns = [
+    /acesso.?negado/i,
+    /página.?não.?encontrada/i,
+    /erro.?404/i,
+    /forbidden/i,
+    /unauthorized/i,
+    /manutenção/i,
+    /em.?construção/i
+  ];
+  
+  if (errorPatterns.some(pattern => pattern.test(content))) {
+    throw new Error('A página parece conter uma mensagem de erro ou estar inacessível');
+  }
+  
+  // Check for repeated content patterns that might indicate scraping issues
+  const lines = content.split('\n').filter(line => line.trim().length > 10);
+  const uniqueLines = new Set(lines);
+  if (lines.length > 10 && uniqueLines.size / lines.length < 0.3) {
+    console.warn('Possible repeated content detected, but proceeding with extraction');
+  }
+  
+  if (content.length < 100) {
+    throw new Error('Conteúdo insuficiente extraído da página');
+  }
+
+  return {
+    content: content.substring(0, 8000),
+    metadata: {
+      title: title.substring(0, 200),
+      description: description.substring(0, 300),
+      language,
+      sourceURL: url,
+      contentLength: content.length,
+      wordCount,
+      extractedElements: {
+        hasTitle: !!title,
+        hasDescription: !!description,
+        contentSelectors: articleSelectors.filter(sel => $(sel).length > 0)
+      }
+    }
+  };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -233,9 +506,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contentToAnalyze = "";
 
       // Process input based on type
+      let extractedMetadata: any = null;
+      
       if (verificationRequest.inputType === "url" && verificationRequest.url) {
         try {
-          contentToAnalyze = await scrapeURL(verificationRequest.url);
+          const scrapedData = await scrapeURL(verificationRequest.url);
+          contentToAnalyze = scrapedData.content;
+          extractedMetadata = scrapedData.metadata;
+          
           if (!contentToAnalyze.trim()) {
             return res.status(400).json({
               success: false,
@@ -253,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify content with Perplexity
-      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime);
+      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime, extractedMetadata);
 
       // Store the result
       const storedResult = await storage.createVerificationResult(verificationResult, storedRequest.id);
