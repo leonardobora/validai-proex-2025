@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth } from "./auth";
 import { 
   VerificationRequestSchema, 
   VerificationResultSchema,
@@ -181,6 +182,9 @@ async function scrapeURL(url: string): Promise<string> {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // Setup authentication first
+  setupAuth(app);
   
   // Health check endpoint
   app.get("/api/health", (req, res) => {

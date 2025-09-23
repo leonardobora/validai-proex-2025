@@ -19,18 +19,18 @@ localPort = 35469
 externalPort = 3001
 
 [[ports]]
-localPort = 36383
-externalPort = 3000
+localPort = 36115
+externalPort = 3002
 
 [[ports]]
-localPort = 38043
-externalPort = 3002
+localPort = 36383
+externalPort = 3000
 
 [env]
 PORT = "5000"
 
 [agent]
-integrations = ["javascript_openai:1.0.0", "perplexity_v0:1.0.0"]
+integrations = ["javascript_openai:1.0.0", "perplexity_v0:1.0.0", "javascript_auth_all_persistance:1.0.0"]
 
 [workflows]
 runButton = "Project"

@@ -17,6 +17,8 @@ import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, desc, count } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 
 // Enhanced storage interface for ValidaÍ
 export interface IStorage {
@@ -45,10 +47,14 @@ export interface IStorage {
     parcialCount: number;
     naoVerificavelCount: number;
   }>;
+  
+  // Session store for authentication
+  sessionStore: session.Store;
 }
 
 export class PostgresStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
+  public sessionStore: session.Store;
 
   constructor() {
     if (!process.env.DATABASE_URL) {
@@ -56,6 +62,13 @@ export class PostgresStorage implements IStorage {
     }
     const sql = neon(process.env.DATABASE_URL);
     this.db = drizzle(sql);
+    
+    // Setup PostgreSQL session store
+    const PostgresSessionStore = connectPg(session);
+    this.sessionStore = new PostgresSessionStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true
+    });
   }
 
   // User methods
