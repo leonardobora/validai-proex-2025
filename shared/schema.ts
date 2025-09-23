@@ -33,7 +33,7 @@ export type Source = z.infer<typeof SourceSchema>;
 // Verification request schema
 export const VerificationRequestSchema = z.object({
   inputType: z.enum(["text", "url"]),
-  content: z.string().min(1, "Conteúdo não pode estar vazio"),
+  content: z.string(),
   url: z.string().url().optional()
 }).refine((data) => {
   if (data.inputType === "url" && !data.url) {
