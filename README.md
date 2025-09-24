@@ -126,7 +126,7 @@ O **objetivo central** do ValidaÍ é oferecer à sociedade uma ferramenta acess
 
 ### Via Interface Web
 
-1. **Acesse**: [validai.app](https://validai.app) *(em desenvolvimento)*
+1. **Acesse**: https://valida-ai.replit.app/
 2. **Cole o conteúdo**: Texto ou URL no campo de verificação
 3. **Clique em Verificar**: Aguarde o processamento
 4. **Analise o resultado**: Classificação detalhada com fontes
@@ -265,15 +265,9 @@ ValidaÍ: 🔍 ANALISANDO CONTEÚDO...
 
 ## 👥 Equipe
 
-### Desenvolvedor Principal
-**Leonardo Bora**
-- 🎓 Estudante de IA Aplicada - UniBrasil (8º período)
-- 💻 Full Stack Developer & AI Engineer
-- 🔗 GitHub: [@leonardobora](https://github.com/leonardobora)
-- 📧 Email: leonardo.bora@exemplo.com
+Leonardo Bora, João Soares, Luan Constancio, Matheus Leite
 
 ### Orientação Acadêmica
-**Prof. [Nome do Orientador]**
 - 🎓 PROEX IV - IA Aplicada
 - 🏛️ Centro Universitário UniBrasil
 
