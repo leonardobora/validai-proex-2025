@@ -63,7 +63,37 @@ jobs:
       run: npm ci
 
     - name: Build application
+      env:
+        # Database configuration
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        PGDATABASE: ${{ secrets.PGDATABASE }}
+        PGHOST: ${{ secrets.PGHOST }}
+        PGPORT: ${{ secrets.PGPORT }}
+        PGUSER: ${{ secrets.PGUSER }}
+        PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        # Session configuration
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        # Node environment
+        NODE_ENV: production
       run: npm run build
+
+    - name: Test application start
+      env:
+        # Database configuration
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        PGDATABASE: ${{ secrets.PGDATABASE }}
+        PGHOST: ${{ secrets.PGHOST }}
+        PGPORT: ${{ secrets.PGPORT }}
+        PGUSER: ${{ secrets.PGUSER }}
+        PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        # Session configuration
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        # Node environment
+        NODE_ENV: production
+      run: |
+        # Verify the built application can start without errors
+        timeout 10s node dist/index.js || [ $? -eq 124 ]
+        echo "✅ Application starts successfully"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
