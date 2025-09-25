@@ -306,8 +306,11 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
   
+  let response: Response;
+  let html: string;
+  
   try {
-    const response = await fetch(url, {
+    response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -323,7 +326,7 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const html = await response.text();
+    html = await response.text();
     if (html.length < 100) {
       throw new Error('Resposta muito curta, possivelmente bloqueada');
     }
@@ -342,7 +345,7 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
     }
   } catch (fetchError) {
     clearTimeout(timeoutId);
-    if (fetchError.name === 'AbortError') {
+    if (fetchError instanceof Error && fetchError.name === 'AbortError') {
       throw new Error('Timeout ao acessar a URL - o site demorou muito para responder');
     }
     throw fetchError;
