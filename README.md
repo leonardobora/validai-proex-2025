@@ -223,12 +223,44 @@ ValidaÍ: 🔍 ANALISANDO CONTEÚDO...
    # Configure webhook endpoints
    ```
 
+### GitHub Actions Configuration
+
+Para que os workflows de CI/CD funcionem corretamente, é necessário configurar os seguintes **secrets** no repositório GitHub:
+
+#### Secrets Obrigatórios
+
+Acesse **Settings → Secrets and variables → Actions** e adicione:
+
+```env
+# Database Configuration
+DATABASE_URL=postgresql://username:password@host:port/database?sslmode=require
+PGDATABASE=your_database_name
+PGHOST=your_host.com
+PGPORT=5432
+PGUSER=your_username
+PGPASSWORD=your_password
+
+# Session Security
+SESSION_SECRET=your-super-secret-session-key-here
+```
+
+#### Como Configurar Secrets no GitHub
+
+1. Acesse o repositório no GitHub
+2. Vá em **Settings** → **Secrets and variables** → **Actions**
+3. Clique em **New repository secret**
+4. Adicione cada variável listada acima
+5. Os workflows irão automaticamente usar esses valores
+
+⚠️ **Importante**: Nunca commit credenciais reais no código. Use sempre secrets do GitHub Actions.
+
 ### Requisitos Mínimos
 
-- **Python**: 3.11+
+- **Node.js**: 20.x+
+- **TypeScript**: Para desenvolvimento
+- **PostgreSQL**: Database configurado (ex: Neon, Supabase)
 - **Memória**: 512MB (mínimo), 2GB (recomendado)
-- **APIs**: Chaves válidas para Perplexity e Firecrawl
-- **Rede**: HTTPS obrigatório para WhatsApp Business API
+- **Rede**: HTTPS obrigatório para produção
 
 ## 🗺️ Roadmap
 

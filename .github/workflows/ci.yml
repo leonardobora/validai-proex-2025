@@ -63,7 +63,38 @@ jobs:
       run: npm ci
 
     - name: Build application
+      env:
+        # Database configuration - required for PostgreSQL connection
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        PGDATABASE: ${{ secrets.PGDATABASE }}
+        PGHOST: ${{ secrets.PGHOST }}
+        PGPORT: ${{ secrets.PGPORT }}
+        PGUSER: ${{ secrets.PGUSER }}
+        PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        # Session configuration - required for Express session security
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        # Node environment - set to production for builds
+        NODE_ENV: production
       run: npm run build
+
+    - name: Test application start
+      env:
+        # Database configuration - required for PostgreSQL connection
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        PGDATABASE: ${{ secrets.PGDATABASE }}
+        PGHOST: ${{ secrets.PGHOST }}
+        PGPORT: ${{ secrets.PGPORT }}
+        PGUSER: ${{ secrets.PGUSER }}
+        PGPASSWORD: ${{ secrets.PGPASSWORD }}
+        # Session configuration - required for Express session security
+        SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        # Node environment - set to production for testing built artifacts
+        NODE_ENV: production
+      run: |
+        # Verify the built application can start without errors
+        # Uses timeout to prevent hanging if there are connectivity issues
+        timeout 10s node dist/index.js || [ $? -eq 124 ]
+        echo "✅ Application starts successfully"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
