@@ -2,21 +2,27 @@ import {
   type VerificationRequest, 
   type VerificationResult,
   type InsertVerificationRequest,
-  type InsertVerificationResult,
+  type InsertVerificationResultDB,
   type User,
   type InsertUser,
+  type TokenUsageDB,
+  type InsertTokenUsageDB,
   type VerificationRequestDB,
   type VerificationResultDB,
   type InsertVerificationRequestDB,
   type InsertVerificationResultDB,
+  type DailyUsageDB,
+  type InsertDailyUsageDB,
   usersTable,
   verificationRequestsTable,
-  verificationResultsTable
+  verificationResultsTable,
+  dailyUsageTable,
+  tokenUsageTable
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
-import { eq, desc, count, and, gte, lte } from "drizzle-orm";
+import { eq, desc, count, and, gte, lte, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -47,6 +53,10 @@ export interface IStorage {
     parcialCount: number;
     naoVerificavelCount: number;
   }>;
+  
+  // Daily usage tracking methods
+  checkDailyUsage(userId: string): Promise<number>;
+  incrementDailyUsage(userId: string): Promise<void>;
   
   // Session store for authentication
   sessionStore: session.Store;
@@ -293,6 +303,123 @@ export class PostgresStorage implements IStorage {
       parcialCount: results.filter(r => r.classification === "PARCIALMENTE_VERDADEIRO").length,
       naoVerificavelCount: results.filter(r => r.classification === "NAO_VERIFICAVEL").length,
     };
+  }
+
+  // Daily usage tracking methods
+  async checkDailyUsage(userId: string): Promise<number> {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    const [usage] = await this.db.select().from(dailyUsageTable)
+      .where(and(
+        eq(dailyUsageTable.userId, userId),
+        eq(dailyUsageTable.date, today)
+      ));
+    
+    return usage?.verificationCount || 0;
+  }
+
+  async incrementDailyUsage(userId: string): Promise<void> {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    // Try to find existing record
+    const [existingUsage] = await this.db.select().from(dailyUsageTable)
+      .where(and(
+        eq(dailyUsageTable.userId, userId),
+        eq(dailyUsageTable.date, today)
+      ));
+    
+    if (existingUsage) {
+      // Update existing record
+      await this.db.update(dailyUsageTable)
+        .set({ 
+          verificationCount: existingUsage.verificationCount + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(dailyUsageTable.id, existingUsage.id));
+    } else {
+      // Create new record
+      await this.db.insert(dailyUsageTable).values({
+        userId,
+        date: today,
+        verificationCount: 1
+      });
+    }
+  }
+
+  // Admin methods
+  async getAllUsers() {
+    const users = await this.db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      name: usersTable.name,
+      isAdmin: usersTable.isAdmin,
+      createdAt: usersTable.createdAt
+    }).from(usersTable).orderBy(usersTable.createdAt);
+    
+    return users;
+  }
+
+  async updateUserAdminStatus(userId: string, isAdmin: boolean): Promise<boolean> {
+    const updateResult = await this.db.update(usersTable)
+      .set({ isAdmin, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+      
+    return updateResult.rowCount! > 0;
+  }
+
+  async getSystemStats() {
+    const totalUsersQuery = this.db.select({ count: sql<number>`count(*)` }).from(usersTable);
+    const totalAdminsQuery = this.db.select({ count: sql<number>`count(*)` }).from(usersTable).where(eq(usersTable.isAdmin, true));
+    const totalVerificationsQuery = this.db.select({ count: sql<number>`count(*)` }).from(verificationResultsTable);
+    const totalRequestsQuery = this.db.select({ count: sql<number>`count(*)` }).from(verificationRequestsTable);
+
+    const [totalUsers, totalAdmins, totalVerifications, totalRequests] = await Promise.all([
+      totalUsersQuery,
+      totalAdminsQuery,
+      totalVerificationsQuery,
+      totalRequestsQuery
+    ]);
+
+    return {
+      totalUsers: totalUsers[0].count,
+      totalAdmins: totalAdmins[0].count,
+      totalVerifications: totalVerifications[0].count,
+      totalRequests: totalRequests[0].count
+    };
+  }
+
+  // Token usage tracking methods
+  async trackTokenUsage(tokenData: InsertTokenUsageDB): Promise<void> {
+    await this.db.insert(tokenUsageTable).values(tokenData);
+  }
+
+  async getTokenUsageStats(): Promise<{
+    totalTokens: number;
+    totalCost: number;
+    avgTokensPerRequest: number;
+    requestsCount: number;
+  }> {
+    const tokenStats = await this.db.select({
+      totalTokens: sql<number>`sum(${tokenUsageTable.totalTokens})::int`,
+      totalCost: sql<number>`sum(${tokenUsageTable.estimatedCostUsd})::float`,
+      requestsCount: sql<number>`count(*)::int`
+    }).from(tokenUsageTable);
+
+    const stats = tokenStats[0] || { totalTokens: 0, totalCost: 0, requestsCount: 0 };
+    const avgTokensPerRequest = stats.requestsCount > 0 ? stats.totalTokens / stats.requestsCount : 0;
+
+    return {
+      totalTokens: stats.totalTokens || 0,
+      totalCost: stats.totalCost || 0,
+      avgTokensPerRequest: Math.round(avgTokensPerRequest),
+      requestsCount: stats.requestsCount || 0
+    };
+  }
+
+  async getTokenUsageByUser(userId: string): Promise<TokenUsageDB[]> {
+    return await this.db.select().from(tokenUsageTable)
+      .where(eq(tokenUsageTable.userId, userId))
+      .orderBy(desc(tokenUsageTable.createdAt));
   }
 }
 

@@ -10,7 +10,9 @@ jest.mock('../storage', () => ({
     getVerificationStats: jest.fn(),
     getUserVerificationHistory: jest.fn(),
     getVerificationByIdForUser: jest.fn(),
-    deleteVerificationForUser: jest.fn()
+    deleteVerificationForUser: jest.fn(),
+    checkDailyUsage: jest.fn(),
+    incrementDailyUsage: jest.fn()
   }
 }));
 
@@ -134,6 +136,7 @@ describe('API Routes', () => {
       const { storage } = require('../storage');
       storage.createVerificationRequest.mockResolvedValue({ id: 'req-123' });
       storage.createVerificationResult.mockResolvedValue({ id: 'result-123' });
+      storage.checkDailyUsage.mockResolvedValue(5); // Mock under limit
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -145,7 +148,28 @@ describe('API Routes', () => {
         content: 'Brazil is the largest country in South America.'
       };
 
-      const response = await request(app)
+      // Create a new app instance with authenticated user for this test
+      const authApp = express();
+      authApp.use(express.json());
+      authApp.use(express.urlencoded({ extended: false }));
+      
+      // Mock authenticated user
+      authApp.use((req, res, next) => {
+        req.user = { 
+          id: 'test-user-1', 
+          email: 'test@example.com', 
+          name: 'Test User',
+          passwordHash: 'hashed',
+          isAdmin: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        next();
+      });
+      
+      await registerRoutes(authApp);
+
+      const response = await request(authApp)
         .post('/api/verify')
         .send(requestBody)
         .expect(200);
@@ -155,7 +179,7 @@ describe('API Routes', () => {
       expect(response.body.data.confidence_percentage).toBe(85);
       expect(response.body.message).toBe('Verificação concluída com sucesso');
 
-      expect(storage.createVerificationRequest).toHaveBeenCalledWith(requestBody);
+      expect(storage.createVerificationRequest).toHaveBeenCalledWith(requestBody, 'test-user-1');
       expect(storage.createVerificationResult).toHaveBeenCalled();
     });
 

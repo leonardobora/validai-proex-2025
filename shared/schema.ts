@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createInsertSchema } from "drizzle-zod";
-import { pgTable, varchar, text, integer, timestamp, boolean, jsonb, uuid } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, integer, timestamp, boolean, jsonb, uuid, decimal } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Verification classification enum
@@ -116,10 +116,34 @@ export const verificationResultsTable = pgTable("verification_results", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
+export const dailyUsageTable = pgTable("daily_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => usersTable.id).notNull(),
+  date: varchar("date").notNull(), // YYYY-MM-DD format
+  verificationCount: integer("verification_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const tokenUsageTable = pgTable("token_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => usersTable.id),
+  requestId: varchar("request_id").references(() => verificationRequestsTable.id),
+  inputTokens: integer("input_tokens").default(0).notNull(),
+  outputTokens: integer("output_tokens").default(0).notNull(),
+  totalTokens: integer("total_tokens").default(0).notNull(),
+  estimatedCostUsd: decimal("estimated_cost_usd", { precision: 10, scale: 6 }).default("0.000000").notNull(),
+  model: varchar("model").default("perplexity-search").notNull(),
+  processingTimeMs: integer("processing_time_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
 // Drizzle insert schemas
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertVerificationRequestSchemaDB = createInsertSchema(verificationRequestsTable).omit({ id: true, createdAt: true });
 export const insertVerificationResultSchemaDB = createInsertSchema(verificationResultsTable).omit({ id: true, createdAt: true });
+export const insertDailyUsageSchema = createInsertSchema(dailyUsageTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTokenUsageSchema = createInsertSchema(tokenUsageTable).omit({ id: true, createdAt: true });
 
 // Database types
 export type User = typeof usersTable.$inferSelect;
@@ -128,7 +152,27 @@ export type VerificationRequestDB = typeof verificationRequestsTable.$inferSelec
 export type InsertVerificationRequestDB = z.infer<typeof insertVerificationRequestSchemaDB>;
 export type VerificationResultDB = typeof verificationResultsTable.$inferSelect;
 export type InsertVerificationResultDB = z.infer<typeof insertVerificationResultSchemaDB>;
+export type DailyUsageDB = typeof dailyUsageTable.$inferSelect;
+export type InsertDailyUsageDB = z.infer<typeof insertDailyUsageSchema>;
+export type TokenUsageDB = typeof tokenUsageTable.$inferSelect;
+export type InsertTokenUsageDB = z.infer<typeof insertTokenUsageSchema>;
 
 // Export types
 export type InsertVerificationRequest = z.infer<typeof insertVerificationRequestSchema>;
 export type InsertVerificationResult = z.infer<typeof insertVerificationResultSchema>;
+
+// Admin interfaces
+export interface TokenUsage {
+  totalTokens: number;
+  totalCost: number;
+  avgTokensPerRequest: number;
+  requestsCount: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalAdmins: number;
+  totalVerifications: number;
+  totalRequests: number;
+  tokenUsage: TokenUsage;
+}

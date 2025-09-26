@@ -49,3 +49,6 @@ pids/
 tmp/
 temp/
 .tmp/
+
+# Development tools and debugging files
+dev-tools/

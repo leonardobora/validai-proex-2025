@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,9 @@ import { Loader2, AlertCircle, History, LogOut, User } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { VerificationForm } from "@/components/verification-form";
 import { VerificationResults } from "@/components/verification-results";
+import { UsageIndicator } from "@/components/usage-indicator";
+import { TrendingNewsSidebar } from "@/components/trending-news-sidebar";
+import { SimpleThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -16,8 +19,10 @@ import type { VerificationRequest, VerificationResult } from "@shared/schema";
 
 export default function Home() {
   const [result, setResult] = useState<VerificationResult | null>(null);
+  const [lastRequest, setLastRequest] = useState<VerificationRequest | null>(null);
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const verificationMutation = useMutation({
     mutationFn: api.verifyContent,
@@ -28,6 +33,8 @@ export default function Home() {
           title: "Verificação concluída",
           description: "A análise foi realizada com sucesso.",
         });
+        // Invalidate usage query to update the counter
+        queryClient.invalidateQueries({ queryKey: ["usage"] });
       } else {
         toast({
           title: "Erro na verificação",
@@ -48,11 +55,13 @@ export default function Home() {
 
   const handleVerificationSubmit = (request: VerificationRequest) => {
     setResult(null);
+    setLastRequest(request);
     verificationMutation.mutate(request);
   };
 
   const handleReset = () => {
     setResult(null);
+    setLastRequest(null);
     verificationMutation.reset();
   };
 
@@ -73,9 +82,16 @@ export default function Home() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-2">
+              {user && (
+                <UsageIndicator className="hidden sm:flex" />
+              )}
+              
+              <div className="hidden md:flex items-center space-x-4">
                 <Badge variant="secondary" className="font-medium">UniBrasil 2025</Badge>
               </div>
+              
+              {/* Theme Toggle */}
+              <SimpleThemeToggle className="ml-2" />
               
               {user && (
                 <DropdownMenu>
@@ -92,6 +108,16 @@ export default function Home() {
                         <span>Histórico</span>
                       </Link>
                     </DropdownMenuItem>
+                    {user.isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="flex items-center space-x-2 w-full text-yellow-600" data-testid="link-admin">
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 6c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2m0 10c2.7 0 5.8 1.29 6 2H6c.23-.72 3.31-2 6-2m0-12C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 10c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                          </svg>
+                          <span>Administração</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       onClick={() => logoutMutation.mutate()}
@@ -111,7 +137,10 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-8">
+          {/* Main content area */}
+          <main className="flex-1 max-w-4xl space-y-8">
         
         {/* Hero Section */}
         <section className="text-center space-y-6">
@@ -175,7 +204,7 @@ export default function Home() {
                 Nova Verificação
               </Button>
             </div>
-            <VerificationResults result={result} />
+            <VerificationResults result={result} originalContent={lastRequest?.content || lastRequest?.url} />
           </div>
         )}
 
@@ -189,37 +218,49 @@ export default function Home() {
           </Alert>
         )}
 
-        {/* How it Works Section */}
-        <Card className="p-6 md:p-8">
-          <h3 className="text-2xl font-bold text-foreground mb-6 text-center">Como o ValidaÍ Funciona</h3>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-3xl">🔍</span>
+            {/* How it Works Section */}
+            <Card className="p-6 md:p-8">
+              <h3 className="text-2xl font-bold text-foreground mb-6 text-center">Como o ValidaÍ Funciona</h3>
+              
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-3xl">🔍</span>
+                  </div>
+                  <h4 className="font-semibold text-foreground">1. Análise da Informação</h4>
+                  <p className="text-sm text-muted-foreground">Processamos o texto ou link usando inteligência artificial avançada</p>
+                </div>
+                
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-3xl">📚</span>
+                  </div>
+                  <h4 className="font-semibold text-foreground">2. Consulta de Fontes</h4>
+                  <p className="text-sm text-muted-foreground">Buscamos em múltiplas fontes acadêmicas e jornalísticas confiáveis</p>
+                </div>
+                
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-3xl">📊</span>
+                  </div>
+                  <h4 className="font-semibold text-foreground">3. Relatório Completo</h4>
+                  <p className="text-sm text-muted-foreground">Apresentamos a classificação com explicações claras e fontes</p>
+                </div>
               </div>
-              <h4 className="font-semibold text-foreground">1. Análise da Informação</h4>
-              <p className="text-sm text-muted-foreground">Processamos o texto ou link usando inteligência artificial avançada</p>
-            </div>
-            
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-3xl">📚</span>
-              </div>
-              <h4 className="font-semibold text-foreground">2. Consulta de Fontes</h4>
-              <p className="text-sm text-muted-foreground">Buscamos em múltiplas fontes acadêmicas e jornalísticas confiáveis</p>
-            </div>
-            
-            <div className="text-center space-y-3">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-3xl">📊</span>
-              </div>
-              <h4 className="font-semibold text-foreground">3. Relatório Completo</h4>
-              <p className="text-sm text-muted-foreground">Apresentamos a classificação com explicações claras e fontes</p>
-            </div>
-          </div>
-        </Card>
-      </main>
+            </Card>
+          </main>
+
+          {/* Sidebar - Trending News (Desktop) */}
+          <aside className="hidden xl:block">
+            <TrendingNewsSidebar />
+          </aside>
+        </div>
+
+        {/* Mobile Trending News */}
+        <div className="xl:hidden max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <TrendingNewsSidebar className="w-full" />
+        </div>
+      </div>
 
       {/* Footer */}
       <footer className="bg-secondary border-t border-border mt-16">
