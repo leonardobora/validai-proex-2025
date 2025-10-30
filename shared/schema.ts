@@ -22,12 +22,23 @@ export const ConfidenceLevel = z.enum([
 
 export type ConfidenceLevel = z.infer<typeof ConfidenceLevel>;
 
+// Political bias enum for sources
+export const PoliticalBias = z.enum([
+  "ESQUERDA",
+  "CENTRO",
+  "DIREITA",
+  "DESCONHECIDO"
+]);
+
+export type PoliticalBias = z.infer<typeof PoliticalBias>;
+
 // Source information schema
 export const SourceSchema = z.object({
   name: z.string(),
   url: z.string().url().optional(),
   description: z.string(),
-  year: z.number().optional()
+  year: z.number().optional(),
+  political_bias: PoliticalBias.optional().default("DESCONHECIDO")
 });
 
 export type Source = z.infer<typeof SourceSchema>;
@@ -51,6 +62,16 @@ export const VerificationRequestSchema = z.object({
 
 export type VerificationRequest = z.infer<typeof VerificationRequestSchema>;
 
+// Source bias distribution
+export const SourceBiasDistribution = z.object({
+  esquerda: z.number().min(0).max(100),
+  centro: z.number().min(0).max(100),
+  direita: z.number().min(0).max(100),
+  desconhecido: z.number().min(0).max(100)
+});
+
+export type SourceBiasDistribution = z.infer<typeof SourceBiasDistribution>;
+
 // Verification result schema
 export const VerificationResultSchema = z.object({
   classification: VerificationClassification,
@@ -60,6 +81,8 @@ export const VerificationResultSchema = z.object({
   temporal_context: z.string(),
   detected_bias: z.string(),
   sources: z.array(SourceSchema),
+  source_bias_distribution: SourceBiasDistribution.optional(),
+  total_sources: z.number().optional(),
   observations: z.string().optional(),
   processing_time_ms: z.number().optional(),
   timestamp: z.string().optional()

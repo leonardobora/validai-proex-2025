@@ -2,9 +2,9 @@
 
 ## Overview
 
-ValidaÍ is a full-stack web application designed for fact-checking and news verification. The system combines a modern React frontend with a robust Express.js backend to provide real-time analysis of news content and information. The application integrates with external APIs (Perplexity AI and Firecrawl) to perform comprehensive fact-checking using AI-powered analysis and web scraping capabilities.
+ValidaÍ is a full-stack web application designed for fact-checking and news verification, specifically targeting Brazilian adults 30+ with limited digital literacy. The system combines a modern React frontend with a robust Express.js backend to provide real-time analysis of news content and information. The application integrates with Perplexity AI Sonar API for AI-powered fact-checking analysis and includes innovative political bias visualization of news sources.
 
-The system allows users to submit either text content or URLs for verification, processes the information through AI analysis, and returns structured results with confidence levels, source citations, and detailed explanations. It's built with TypeScript throughout for type safety and includes a comprehensive UI component library based on shadcn/ui.
+The system allows users to submit either text content or URLs for verification, processes the information through AI analysis, and returns structured results with confidence levels, source citations, detailed explanations, and a political spectrum analysis of sources (inspired by Ground News). Each source is automatically classified as Left/Center/Right based on a comprehensive database of Brazilian media outlets. It's built with TypeScript throughout for type safety and includes an accessible UI component library based on shadcn/ui.
 
 ## User Preferences
 
@@ -28,29 +28,43 @@ The frontend uses a clean separation of concerns with dedicated directories for 
 The backend follows a RESTful API design using Express.js:
 
 - **Server Framework**: Express.js with TypeScript
-- **API Integration**: Perplexity AI for fact-checking analysis and Firecrawl for web scraping
-- **Data Storage**: In-memory storage with interfaces designed for easy database migration
+- **API Integration**: Perplexity AI Sonar API (simplified from previous two-API approach) for fact-checking analysis with automatic source discovery
+- **Political Bias Classification**: Custom Brazilian media bias database mapping 50+ media outlets (gov.br, edu.br, major news portals) to political spectrum (ESQUERDA/CENTRO/DIREITA)
+- **Data Storage**: PostgreSQL database via Drizzle ORM with user authentication and verification history persistence
 - **Schema Validation**: Zod schemas shared between frontend and backend for type safety
 - **Error Handling**: Centralized error handling with custom exception types
 
-The backend implements a service-oriented architecture with clear separation between routes, storage, and external API integrations. The verification process includes content analysis, source validation, and confidence scoring.
+The backend implements a service-oriented architecture with clear separation between routes, storage, and external API integrations. The verification process includes content analysis, source validation, confidence scoring, and automatic political bias classification of each source.
 
 ### Database Design
-Currently uses in-memory storage but is designed with database migration in mind:
+Uses PostgreSQL database for production-grade data persistence:
 
-- **Storage Interface**: Abstract storage interface supporting verification requests and results
-- **Data Models**: Structured schemas for verification requests, results, sources, and analytics
-- **ORM Ready**: Drizzle ORM configuration present for future PostgreSQL integration
-- **Migration Support**: Database migration infrastructure already configured
+- **Storage Interface**: PostgreSQL via Drizzle ORM supporting verification requests, results, and user data
+- **Data Models**: Structured schemas for users, verification requests, verification results with source bias tracking
+- **User Isolation**: Each user has isolated verification history with proper authentication and authorization
+- **Migration Support**: Database migrations handled via `npm run db:push` using Drizzle Kit
 
 ### Authentication & Authorization
-The current implementation doesn't include authentication, focusing on the core verification functionality. The architecture supports easy integration of authentication systems in the future.
+Full authentication system implemented:
+
+- **User Management**: Registration, login, logout with bcrypt password hashing
+- **Session Management**: Express-session with PostgreSQL session store
+- **Protected Routes**: Verification history and user-specific features require authentication
+- **User Isolation**: Verifications are associated with user IDs for proper data separation
 
 ## External Dependencies
 
 ### Third-Party APIs
-- **Perplexity AI**: Primary fact-checking engine that analyzes content and provides verification results with confidence levels and source citations
-- **Firecrawl**: Web scraping service for extracting content from URLs when users submit links for verification
+- **Perplexity AI Sonar API**: Single unified API for fact-checking that automatically discovers 5-8 relevant Brazilian sources during analysis, providing verification results with confidence levels and comprehensive source citations
+
+### Political Bias Analysis
+- **Brazilian Media Mapping**: Custom database of 50+ Brazilian media outlets with political bias classification
+  - **Esquerda (Left)**: Brasil 247, Carta Capital, The Intercept Brasil, Brasil de Fato, etc.
+  - **Centro (Center)**: G1, UOL, Folha, Estadão, BBC Brasil, all .gov.br and .edu.br domains
+  - **Direita (Right)**: Gazeta do Povo, Jovem Pan, Veja, Revista Oeste, O Antagonista, etc.
+- **Automatic Classification**: Each source returned by AI is automatically classified based on domain and outlet name
+- **Bias Distribution**: Calculated percentages showing political spectrum of consulted sources
+- **Ground News-Inspired Visualization**: Horizontal bar chart with color-coded segments (red/blue/yellow) showing source distribution
 
 ### Database & Storage
 - **PostgreSQL**: Configured via Drizzle ORM for future database integration (currently using in-memory storage)

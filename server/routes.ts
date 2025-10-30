@@ -9,9 +9,11 @@ import {
   type VerificationResult,
   type VerificationResponse,
   type VerificationClassification,
-  type ConfidenceLevel
+  type ConfidenceLevel,
+  type Source
 } from "@shared/schema";
 import { Perplexity } from "@perplexity-ai/perplexity_ai";
+import { classifySourceBias, calculateBiasDistribution } from "./brazilian-media-bias";
 
 // Perplexity Search API integration - New structured search
 interface SearchResult {
@@ -89,15 +91,15 @@ async function searchSources(query: string, maxResults: number = 10): Promise<Se
   }
 }
 
-// Perplexity Sonar API integration for fact-checking analysis with Search API sources
-async function callPerplexityAPI(content: string, startTime: number, metadata?: any, searchResults?: SearchResult[]): Promise<VerificationResult> {
+// Perplexity Sonar API integration for fact-checking analysis
+async function callPerplexityAPI(content: string, startTime: number, metadata?: any): Promise<VerificationResult> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   
   if (!apiKey) {
     throw new Error("PERPLEXITY_API_KEY não configurada");
   }
 
-  // Construct enhanced system prompt with metadata context and search results
+  // Construct enhanced system prompt with metadata context
   let systemPrompt = `Você é ValidaÍ, sistema de verificação de notícias da UniBrasil. Analise a informação fornecida e retorne APENAS um JSON válido com esta estrutura exata:
 
 {
@@ -106,40 +108,27 @@ async function callPerplexityAPI(content: string, startTime: number, metadata?: 
   "confidence_level": "ALTO|MEDIO|BAIXO", 
   "explanation": "explicação detalhada em português brasileiro",
   "temporal_context": "contexto temporal das informações",
-  "detected_bias": "análise de viés detectado",
+  "detected_bias": "análise de viés detectado no conteúdo (não na fonte)",
   "sources": [
     {
       "name": "nome da fonte",
-      "url": "url se disponível",
-      "description": "descrição da fonte",
+      "url": "url completa se disponível",
+      "description": "descrição breve da fonte e relevância",
       "year": 2024
     }
   ],
-  "observations": "observações importantes"
+  "observations": "observações importantes sobre limitações ou contexto adicional"
 }
 
-Diretrizes:
-- Use linguagem acessível para adultos 30+
-- Cite fontes brasileiras quando possível
-- Seja neutro e didático
-- Explique claramente o motivo da classificação
-- Indique limitações da análise
-- Priorize fontes governamentais (.gov.br), acadêmicas (.edu.br) e veículos jornalísticos estabelecidos`;
-
-  // Add search results context if available
-  if (searchResults && searchResults.length > 0) {
-    systemPrompt += `
-
-FONTES ENCONTRADAS NA BUSCA (use estas para fundamentar sua análise):
-${searchResults.map((result, index) => `
-${index + 1}. ${result.title}
-   URL: ${result.url}
-   Resumo: ${result.snippet}
-   ${result.date ? `Data: ${result.date}` : ''}
-`).join('\n')}
-
-IMPORTANTE: Use as fontes acima para fundamentar sua verificação. Analise a credibilidade de cada fonte (domínio governamental, acadêmico, jornalístico estabelecido) e cite-as na sua resposta.`;
-  }
+Diretrizes críticas:
+- Use linguagem MUITO acessível para adultos 30+ com baixa literacia digital
+- BUSQUE E CITE 5-8 fontes brasileiras confiáveis (priorize .gov.br, .edu.br, portais jornalísticos estabelecidos)
+- Cada fonte DEVE ter URL completa sempre que possível
+- Seja neutro, didático e empático
+- Explique CLARAMENTE o motivo da classificação em termos simples
+- Indique limitações da análise de forma transparente
+- Use fontes diversas: governamentais, acadêmicas, jornalísticas variadas
+- IMPORTANTE: Busque informações atualizadas sobre o tema antes de responder`;
 
   // Add metadata context if available
   if (metadata) {
@@ -152,7 +141,7 @@ CONTEXTO DA FONTE ORIGINAL:
 - Idioma detectado: ${metadata.language || 'Não determinado'}
 - Método de extração: ${metadata.extractionMethod || 'Não especificado'}
 
-Use essas informações para melhorar a análise de credibilidade da fonte.`;
+Use essas informações para melhorar a análise de credibilidade da fonte original.`;
   }
 
   const response = await fetch("https://api.perplexity.ai/chat/completions", {
@@ -196,6 +185,20 @@ Use essas informações para melhorar a análise de credibilidade da fonte.`;
     const cleanedResponse = aiResponse.replace(/```json\n?|```\n?/g, '').trim();
     const parsed = JSON.parse(cleanedResponse);
     
+    // Classify political bias for each source
+    const sourcesWithBias: Source[] = (parsed.sources || []).map((source: any) => ({
+      name: source.name,
+      url: source.url,
+      description: source.description,
+      year: source.year,
+      political_bias: source.url 
+        ? classifySourceBias(source.url, source.name)
+        : "DESCONHECIDO"
+    }));
+    
+    // Calculate bias distribution
+    const biasDistribution = calculateBiasDistribution(sourcesWithBias);
+    
     // Create candidate result with proper processing time
     const candidateResult = {
       classification: parsed.classification,
@@ -204,7 +207,9 @@ Use essas informações para melhorar a análise de credibilidade da fonte.`;
       explanation: parsed.explanation || "Análise não disponível",
       temporal_context: parsed.temporal_context || "Contexto temporal não determinado",
       detected_bias: parsed.detected_bias || "Análise de viés não disponível", 
-      sources: parsed.sources || [],
+      sources: sourcesWithBias,
+      source_bias_distribution: biasDistribution,
+      total_sources: sourcesWithBias.length,
       observations: parsed.observations,
       processing_time_ms: Date.now() - startTime,
       timestamp: new Date().toISOString()
@@ -435,9 +440,9 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
       }
       throw new Error('Resposta não parece ser HTML válido');
     }
-  } catch (fetchError) {
+  } catch (fetchError: unknown) {
     clearTimeout(timeoutId);
-    if (fetchError.name === 'AbortError') {
+    if (fetchError instanceof Error && fetchError.name === 'AbortError') {
       throw new Error('Timeout ao acessar a URL - o site demorou muito para responder');
     }
     throw fetchError;
@@ -629,13 +634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contentToAnalyze = verificationRequest.content;
       }
 
-      // Step 1: Search for relevant sources using Perplexity Search API
-      console.log("Buscando fontes relevantes com Search API...");
-      const searchResults = await searchSources(contentToAnalyze, 8);
-      console.log(`Encontradas ${searchResults.length} fontes relevantes`);
-
-      // Step 2: Verify content with Perplexity Sonar API using found sources
-      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime, extractedMetadata, searchResults);
+      // Verify content with Perplexity Sonar API
+      // O Sonar API busca fontes internamente durante a análise
+      console.log("Iniciando verificação com Perplexity Sonar API...");
+      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime, extractedMetadata);
 
       // Store the result
       const storedResult = await storage.createVerificationResult(verificationResult, storedRequest.id);

@@ -3,6 +3,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
 import type { VerificationResult } from "@shared/schema";
+import { SourceBiasDistribution } from "@/components/SourceBiasDistribution";
+import { SourceCard } from "@/components/SourceCard";
 
 interface VerificationResultsProps {
   result: VerificationResult;
@@ -131,6 +133,14 @@ export function VerificationResults({ result }: VerificationResultsProps) {
           </div>
         </div>
 
+        {/* Political Bias Distribution */}
+        {result.source_bias_distribution && result.total_sources && result.total_sources > 0 && (
+          <SourceBiasDistribution 
+            distribution={result.source_bias_distribution}
+            totalSources={result.total_sources}
+          />
+        )}
+
         {/* Sources */}
         {result.sources && result.sources.length > 0 && (
           <div className="space-y-4">
@@ -140,37 +150,7 @@ export function VerificationResults({ result }: VerificationResultsProps) {
             </h3>
             <div className="grid gap-4">
               {result.sources.map((source, index) => (
-                <div key={index} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow" data-testid={`source-${index}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <h4 className="font-semibold text-foreground" data-testid={`source-name-${index}`}>
-                        {source.name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground" data-testid={`source-description-${index}`}>
-                        {source.description}
-                      </p>
-                      <div className="flex items-center space-x-4">
-                        {source.url && (
-                          <a
-                            href={source.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:text-primary/80 text-sm font-medium inline-flex items-center space-x-1"
-                            data-testid={`link-source-${index}`}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                            <span>Acessar fonte</span>
-                          </a>
-                        )}
-                        {source.year && (
-                          <Badge variant="secondary" className="text-xs" data-testid={`source-year-${index}`}>
-                            {source.year}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <SourceCard key={index} source={source} index={index} />
               ))}
             </div>
           </div>
