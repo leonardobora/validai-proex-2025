@@ -399,6 +399,8 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
   
+  let html: string;
+  
   try {
     const response = await fetch(url, {
       headers: {
@@ -416,7 +418,7 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const html = await response.text();
+    html = await response.text();
     if (html.length < 100) {
       throw new Error('Resposta muito curta, possivelmente bloqueada');
     }
