@@ -11,16 +11,93 @@ import {
   type VerificationClassification,
   type ConfidenceLevel
 } from "@shared/schema";
+import { Perplexity } from "@perplexity-ai/perplexity_ai";
 
-// Perplexity API integration
-async function callPerplexityAPI(content: string, startTime: number, metadata?: any): Promise<VerificationResult> {
+// Perplexity Search API integration - New structured search
+interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  date?: string;
+  last_updated?: string;
+}
+
+interface PerplexitySearchResponse {
+  results: SearchResult[];
+}
+
+// Initialize Perplexity client for Search API
+const perplexityClient = new Perplexity({
+  apiKey: process.env.PERPLEXITY_API_KEY || ""
+});
+
+// Brazilian trusted domains for fact-checking
+const TRUSTED_BRAZILIAN_DOMAINS = [
+  "gov.br",
+  "edu.br", 
+  "fiocruz.br",
+  "usp.br",
+  "unicamp.br",
+  "g1.globo.com",
+  "folha.uol.com.br",
+  "estadao.com.br",
+  "oglobo.globo.com",
+  "bbc.com/portuguese",
+  "agenciabrasil.ebc.com.br",
+  "senado.leg.br",
+  "camara.leg.br"
+];
+
+// Search for relevant sources using Perplexity Search API
+async function searchSources(query: string, maxResults: number = 10): Promise<SearchResult[]> {
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+  
+  if (!apiKey) {
+    console.warn("PERPLEXITY_API_KEY não configurada, pulando busca de fontes");
+    return [];
+  }
+
+  try {
+    // Use the Search API to find relevant sources
+    const searchResponse = await fetch("https://api.perplexity.ai/search", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query: query,
+        max_results: maxResults,
+        max_tokens_per_page: 1024,
+        country: "BR", // Focus on Brazilian results
+        search_recency_filter: "month", // Recent information
+        search_domain_filter: TRUSTED_BRAZILIAN_DOMAINS.slice(0, 20) // Limit to trusted domains
+      })
+    });
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`Perplexity Search API Error ${searchResponse.status}:`, errorText);
+      return [];
+    }
+
+    const data: PerplexitySearchResponse = await searchResponse.json();
+    return data.results || [];
+  } catch (error) {
+    console.error("Error searching sources:", error);
+    return [];
+  }
+}
+
+// Perplexity Sonar API integration for fact-checking analysis with Search API sources
+async function callPerplexityAPI(content: string, startTime: number, metadata?: any, searchResults?: SearchResult[]): Promise<VerificationResult> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   
   if (!apiKey) {
     throw new Error("PERPLEXITY_API_KEY não configurada");
   }
 
-  // Construct enhanced system prompt with metadata context
+  // Construct enhanced system prompt with metadata context and search results
   let systemPrompt = `Você é ValidaÍ, sistema de verificação de notícias da UniBrasil. Analise a informação fornecida e retorne APENAS um JSON válido com esta estrutura exata:
 
 {
@@ -46,13 +123,29 @@ Diretrizes:
 - Cite fontes brasileiras quando possível
 - Seja neutro e didático
 - Explique claramente o motivo da classificação
-- Indique limitações da análise`;
+- Indique limitações da análise
+- Priorize fontes governamentais (.gov.br), acadêmicas (.edu.br) e veículos jornalísticos estabelecidos`;
+
+  // Add search results context if available
+  if (searchResults && searchResults.length > 0) {
+    systemPrompt += `
+
+FONTES ENCONTRADAS NA BUSCA (use estas para fundamentar sua análise):
+${searchResults.map((result, index) => `
+${index + 1}. ${result.title}
+   URL: ${result.url}
+   Resumo: ${result.snippet}
+   ${result.date ? `Data: ${result.date}` : ''}
+`).join('\n')}
+
+IMPORTANTE: Use as fontes acima para fundamentar sua verificação. Analise a credibilidade de cada fonte (domínio governamental, acadêmico, jornalístico estabelecido) e cite-as na sua resposta.`;
+  }
 
   // Add metadata context if available
   if (metadata) {
     systemPrompt += `
 
-CONTEXTO DA FONTE:
+CONTEXTO DA FONTE ORIGINAL:
 - Título da página: ${metadata.title || 'Não disponível'}
 - Descrição: ${metadata.description || 'Não disponível'}
 - URL origem: ${metadata.sourceURL || 'Não disponível'}
@@ -530,8 +623,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contentToAnalyze = verificationRequest.content;
       }
 
-      // Verify content with Perplexity
-      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime, extractedMetadata);
+      // Step 1: Search for relevant sources using Perplexity Search API
+      console.log("Buscando fontes relevantes com Search API...");
+      const searchResults = await searchSources(contentToAnalyze, 8);
+      console.log(`Encontradas ${searchResults.length} fontes relevantes`);
+
+      // Step 2: Verify content with Perplexity Sonar API using found sources
+      const verificationResult = await callPerplexityAPI(contentToAnalyze, startTime, extractedMetadata, searchResults);
 
       // Store the result
       const storedResult = await storage.createVerificationResult(verificationResult, storedRequest.id);
