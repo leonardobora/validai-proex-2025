@@ -595,8 +595,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const verificationRequest = validationResult.data;
       
-      // Store the request
-      const storedRequest = await storage.createVerificationRequest(verificationRequest);
+      // Get authenticated user ID if available (verification can work without auth too)
+      const userId = (req as any).user?.id;
+      console.log(`[Verify] Creating verification for user: ${userId || 'anonymous'}`);
+      
+      // Store the request with user association
+      const storedRequest = await storage.createVerificationRequest(verificationRequest, userId);
 
       let contentToAnalyze = "";
 
@@ -661,12 +665,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/history", async (req, res) => {
     try {
       // Check authentication
-      if (!req.user?.id) {
+      if (!(req as any).user?.id) {
         return res.status(401).json({
           success: false,
           error: "Usuário não autenticado"
         });
       }
+
+      const userId = (req as any).user.id;
+      console.log(`[History] Fetching history for user: ${userId}`);
 
       // Parse pagination and filtering parameters
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -681,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user verification history with filters
       const historyData = await storage.getUserVerificationHistory(
-        req.user.id, 
+        userId, 
         limit, 
         offset,
         {
