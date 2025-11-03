@@ -8,7 +8,7 @@
 
 ---
 
-**PROEX III ENGENHARIA DE SOFTWARE**
+**PROEX IV ENGENHARIA DE SOFTWARE**
 
 </div>
 
@@ -104,6 +104,12 @@ Foram desenvolvidos os seguintes componentes do sistema:
 - Seção educativa: "O que significa viés político da fonte?"
 - Links clicáveis para acessar fontes originais
 - Ícones contextuais (governo, educação, mídia)
+<img width="976" height="775" alt="image" src="https://github.com/user-attachments/assets/ae57f620-4eec-48e9-a5e7-509425134dd5" />
+<img width="807" height="824" alt="image" src="https://github.com/user-attachments/assets/6b3444e9-7db8-4b4f-854a-85e9fd206bf0" />
+<img width="955" height="333" alt="image" src="https://github.com/user-attachments/assets/f0f9e43a-ea8a-4489-9d19-db079f33553a" />
+<img width="1597" height="668" alt="image" src="https://github.com/user-attachments/assets/80e00616-5eb8-440b-a00b-472bdbe89741" />
+
+
 
 ---
 
@@ -244,6 +250,7 @@ validai/
 **Projeto de Extensão UniBrasil - PROEX IV**  
 **Curso:** Engenharia de Software  
 **Período:** 2025
+**Mantenedor** Leonardo Bora (leonardo.bora@outlook.com)
 
 ### Como Contribuir
 
@@ -257,7 +264,7 @@ Contribuições são bem-vindas! Para contribuir:
 
 ### Reportar Problemas
 
-Encontrou um bug ou tem uma sugestão? [Abra uma issue](https://github.com/seu-usuario/validai/issues).
+Encontrou um bug ou tem uma sugestão? [Abra uma issue](https://github.com/leonardobora/validai/issues).
 
 ---
 
