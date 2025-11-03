@@ -17,11 +17,11 @@ O projeto utilizou Perplexity Sonar API para verificação factual com inteligê
 
 INTERVENÇÕES REALIZADAS
 
-Foi desenvolvido um sistema completo de verificação inteligente que aceita entrada via texto ou URL, realiza classificação automática em quatro categorias (verdadeiro, falso, parcialmente verdadeiro ou não verificável), apresenta nível de confiança de 0 a 100% e fornece explicação detalhada em linguagem acessível.
+Foi desenvolvido um sistema de verificação que aceita texto ou URL e classifica automaticamente em quatro categorias (verdadeiro, falso, parcialmente verdadeiro ou não verificável), com nível de confiança de 0 a 100% e explicação em linguagem acessível.
 
-A principal inovação do projeto consiste na análise automática de viés político das fontes consultadas. O sistema classifica cada fonte em três categorias do espectro político brasileiro (esquerda, centro ou direita), utilizando um mapeamento de mais de 50 veículos de comunicação que inclui G1, Folha de S.Paulo, UOL, Estadão, Brasil 247, Carta Capital, Jovem Pan e Gazeta do Povo. A visualização foi inspirada no modelo Ground News, apresentando gráfico com distribuição percentual das fontes por categoria, badges coloridos identificando o viés de cada fonte, e links clicáveis permitindo acesso direto às fontes originais.
+A principal inovação consiste na análise automática de viés político das fontes consultadas. O sistema classifica cada fonte em esquerda, centro ou direita, utilizando mapeamento de mais de 50 veículos brasileiros incluindo G1, Folha, Estadão, Brasil 247, Jovem Pan e Gazeta do Povo. A visualização inspirada no Ground News apresenta gráfico com distribuição percentual, badges coloridos e links clicáveis para as fontes originais.
 
-O sistema passou por validação rigorosa com usuários reais do público-alvo, incluindo testes end-to-end com pessoas acima de 30 anos, verificação de acessibilidade da interface, e implementação de sistema de autenticação com histórico pessoal de verificações.
+O sistema foi validado com usuários reais acima de 30 anos através de testes de acessibilidade e usabilidade, incluindo autenticação e histórico pessoal de verificações.
 
 
 EVIDÊNCIAS
