@@ -25,7 +25,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
   return (
     <div className="space-y-4" data-testid="bias-distribution">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Espectro Político das Fontes
         </h3>
         <TooltipProvider>
@@ -35,7 +35,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                 data-testid="tooltip-bias-info"
               >
-                <Info className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <Info className="h-5 w-5 text-gray-500 dark:text-gray-300" />
               </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs p-4">
@@ -49,7 +49,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
       </div>
 
       <div className="space-y-2">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-700 dark:text-gray-200">
           {totalSources} {totalSources === 1 ? 'fonte consultada' : 'fontes consultadas'}
         </p>
 
@@ -105,7 +105,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
           {esquerda > 0 && (
             <div className="flex items-center gap-2" data-testid="legend-esquerda">
               <div className="w-4 h-4 bg-red-400 dark:bg-red-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">
+              <span className="text-gray-800 dark:text-gray-100 font-medium">
                 Esquerda: {esquerda}%
               </span>
             </div>
@@ -114,7 +114,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
           {centro > 0 && (
             <div className="flex items-center gap-2" data-testid="legend-centro">
               <div className="w-4 h-4 bg-blue-400 dark:bg-blue-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">
+              <span className="text-gray-800 dark:text-gray-100 font-medium">
                 Centro: {centro}%
               </span>
             </div>
@@ -123,7 +123,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
           {direita > 0 && (
             <div className="flex items-center gap-2" data-testid="legend-direita">
               <div className="w-4 h-4 bg-yellow-500 dark:bg-yellow-600 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">
+              <span className="text-gray-800 dark:text-gray-100 font-medium">
                 Direita: {direita}%
               </span>
             </div>
@@ -132,7 +132,7 @@ export function SourceBiasDistribution({ distribution, totalSources }: SourceBia
           {desconhecido > 0 && (
             <div className="flex items-center gap-2" data-testid="legend-desconhecido">
               <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">
+              <span className="text-gray-800 dark:text-gray-100 font-medium">
                 Desconhecido: {desconhecido}%
               </span>
             </div>

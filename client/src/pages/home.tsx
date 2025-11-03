@@ -36,10 +36,43 @@ export default function Home() {
         });
       }
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Extract error message from server response
+      let errorMessage = "Não foi possível conectar ao servidor. Tente novamente.";
+      
+      // First, check if error has responseData (from queryClient)
+      if (error?.responseData?.error) {
+        errorMessage = error.responseData.error;
+      } else if (error instanceof Error) {
+        const errorText = error.message;
+        
+        // Extract JSON error from the message (format: "400: {json}")
+        const jsonMatch = errorText.match(/\d+:\s*(\{.*\})/);
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            const errorData = JSON.parse(jsonMatch[1]);
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // Try to use the full error message after the status code
+            const afterColon = errorText.split(":").slice(1).join(":").trim();
+            if (afterColon) {
+              errorMessage = afterColon;
+            }
+          }
+        } else {
+          // Fallback: use everything after the first colon
+          const parts = errorText.split(":");
+          if (parts.length > 1) {
+            errorMessage = parts.slice(1).join(":").trim();
+          } else {
+            errorMessage = errorText;
+          }
+        }
+      }
+      
       toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Tente novamente.",
+        title: "Erro na verificação",
+        description: errorMessage,
         variant: "destructive",
       });
       console.error("Verification error:", error);

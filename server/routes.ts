@@ -344,6 +344,12 @@ async function scrapeURL(url: string): Promise<{ content: string; metadata: any 
     return finalResult;
   } catch (error) {
     console.error('All extraction methods failed:', error);
+    
+    // Mensagem específica para URLs problemáticas conhecidas
+    if (url.includes('msn.com')) {
+      throw new Error(`Sites MSN usam renderização JavaScript complexa e não podem ser extraídos automaticamente. Por favor, copie o texto da notícia e use a opção "Colar Texto" ao invés de enviar a URL.`);
+    }
+    
     throw new Error(`Não foi possível extrair conteúdo da URL. Verifique se o site está acessível e tente novamente. Detalhes: ${error}`);
   }
 }
@@ -482,7 +488,14 @@ async function extractWithCheerio(url: string): Promise<{ content: string; metad
     '.post-text', // Generic blog pattern
     '.news-content', // Generic news pattern
     '.article-body',
-    '[data-module="ArticleBody"]' // Some news sites
+    '[data-module="ArticleBody"]', // Some news sites
+    '.article-body-content', // MSN
+    '[itemprop="articleBody"]', // Schema.org markup
+    '.story-content', // Various news sites
+    '.newsarticle-body', // Some Brazilian portals
+    'main article', // Semantic HTML5
+    '#article-body', // ID-based selectors
+    '#content-main'
   ];
   
   for (const selector of articleSelectors) {
