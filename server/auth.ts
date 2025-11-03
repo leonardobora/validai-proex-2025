@@ -3,6 +3,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
+import { csrf } from "lusca";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
@@ -38,6 +39,7 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+  app.use(csrf());
 
   // Use email instead of username for Brazilian context
   passport.use(
