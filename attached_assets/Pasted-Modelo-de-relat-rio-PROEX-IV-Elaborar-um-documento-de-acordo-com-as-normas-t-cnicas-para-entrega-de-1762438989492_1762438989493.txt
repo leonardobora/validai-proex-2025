@@ -1,0 +1,86 @@
+Modelo de relatório PROEX IV
+Elaborar um documento de acordo com as normas técnicas para entrega de
+trabalhos acadêmicos, contemplando os itens (obrigatórios) a seguir:
+1. Introdução
+Nesta seção, o objetivo é apresentar o projeto de forma clara e concisa. O leitor
+deve entender o que foi desenvolvido e qual era o seu propósito principal ao final da
+leitura deste capítulo.
+Pontos a serem abordados:
+Apresentação do Projeto: Qual é o nome do software desenvolvido? Descreva
+brevemente o que ele faz.
+Problema: Qual problema ou necessidade este software se propõe a resolver?
+Objetivo Principal: Qual é o objetivo central do projeto? (Ex: "Desenvolver um
+sistema web para gerenciamento de tarefas pessoais que permita ao usuário
+cadastrar, organizar e acompanhar o progresso de suas atividades diárias.")
+Público-Alvo: Para quem este software se destina?
+Escopo do Projeto: O que o software faz e o que ele não faz? Liste as principais
+funcionalidades que foram implementadas nesta atividade.
+2. Justificativa
+A justificativa deve convencer o leitor sobre a importância e a relevância do projeto.
+Aqui, deve-se explicar por que o desenvolvimento desta solução foi necessário ou
+vantajoso.
+Pontos a serem abordados:
+Relevância do Problema: Por que o problema apresentado na introdução é
+importante de ser resolvido? Qual o impacto dele para o público-alvo?
+Benefícios da Solução: Quais são os principais benefícios que o software traz?
+(Ex: otimização de tempo, redução de custos, organização de informações,
+automação de processos, etc.).
+Diferencial: Existem soluções parecidas no mercado? Se sim, qual o diferencial do
+projeto desenvolvido? Se não, por que a criação de uma nova solução é
+importante?
+3. Metodologia
+Nesta seção, os alunos devem descrever como o projeto foi desenvolvido. Quais
+foram as ferramentas, técnicas e processos utilizados para transformar a ideia em
+um software funcional.
+Pontos a serem abordados:
+Metodologia de Desenvolvimento: Qual abordagem foi utilizada para gerenciar o
+projeto? (Ex: Scrum, Kanban, XP, ou uma abordagem mais tradicional como o
+Modelo Cascata). Descreva brevemente por que essa metodologia foi escolhida.
+Tecnologias e Ferramentas:
+Linguagens de Programação: (Ex: Java, Python, JavaScript)
+Frameworks/Bibliotecas: (Ex: Spring Boot, React, Node.js, .NET)
+Banco de Dados: (Ex: MySQL, PostgreSQL, MongoDB)
+Ferramentas de Versionamento: (Ex: Git, GitHub, GitLab)
+Ambiente de Desenvolvimento (IDE): (Ex: VS Code, IntelliJ IDEA, Eclipse)
+Arquitetura do Sistema: Descreva de forma simples a arquitetura do software. (Ex:
+"A aplicação segue o padrão MVC (Model-View-Controller)..." ou "O sistema foi
+desenvolvido com uma arquitetura de microsserviços..."). Um diagrama simples
+pode ser muito útil aqui.
+4. Resultados
+Esta é a seção para apresentar o que foi efetivamente construído e entregue. O foco
+deve ser na demonstração do produto final e na validação de que os objetivos foram
+alcançados.
+Pontos a serem abordados:
+Funcionalidades Implementadas: Descreva em detalhes as principais
+funcionalidades do software. Utilize capturas de tela (prints) para ilustrar cada
+funcionalidade.
+Exemplo:
+Tela de Login: "O sistema possui uma tela de autenticação de usuário, conforme a
+Figura 1." (Inserir print da tela de login).
+Cadastro de Tarefas: "O usuário pode cadastrar novas tarefas através de um
+formulário que solicita título, descrição e prazo, como mostra a Figura 2." (Inserir
+print da tela de cadastro).
+Testes Realizados: Descreva quais testes foram feitos para garantir a qualidade do
+software (Ex: testes de unidade, testes de integração, testes manuais de
+usabilidade).
+Análise dos Resultados: Os objetivos definidos na introdução foram alcançados?
+O software resolve o problema proposto? Quantas pessoas utilizaram o sistema?
+Quais dados a equipe conseguiu levantar e analisar?
+5. Considerações Finais
+Nesta última seção, os alunos devem refletir sobre o processo de desenvolvimento
+e os resultados obtidos, apresentando uma visão crítica sobre o trabalho realizado.
+Pontos a serem abordados:
+Resumo dos Resultados: Faça uma breve recapitulação dos objetivos alcançados
+e do que o projeto entregou.
+Principais Desafios: Quais foram as maiores dificuldades encontradas durante o
+desenvolvimento? (Ex: problemas técnicos com uma ferramenta, dificuldade em
+implementar uma lógica específica, gerenciamento do tempo).
+Aprendizados: O que foi aprendido ao longo do projeto? (Tanto em termos técnicos
+quanto em habilidades de trabalho em equipe, gerenciamento de projetos, etc.).
+Limitações do Projeto: O software possui alguma limitação conhecida? Há
+funcionalidades importantes que não foram implementadas?
+Trabalhos Futuros: Que melhorias ou novas funcionalidades poderiam ser
+adicionadas ao projeto em uma próxima versão?
+6. Referências
+Neste item os alunos devem inserir todo o referencial utilizado no embasamento das
+pesquisas e desenvolvimento do projeto.

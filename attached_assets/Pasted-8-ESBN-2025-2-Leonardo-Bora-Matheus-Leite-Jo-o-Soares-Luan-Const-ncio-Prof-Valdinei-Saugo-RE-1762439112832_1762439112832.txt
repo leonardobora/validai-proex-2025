@@ -1,0 +1,66 @@
+8º ESBN 2025_2
+Leonardo Bora
+Matheus Leite
+João Soares
+Luan Constâncio
+Prof. Valdinei Saugo
+RESUMO
+VALIDAÍ: VERIFICAÇÃO DE NOTÍCIAS EM TEMPO REAL 
+COM IA GENERATIVA
+PROEX III ENGENHARIA DE SOFTWARE
+INTRODUÇÃO E JUSTIFICATIVA INTERVENÇÕES REALIZADAS 
+OBJETIVO
+EVIDÊNCIAS
+Este trabalho apresenta os resultados de um projeto de extensão focado no combate à desinformação 
+através de tecnologia de inteligência artificial. O ValidaÍ é uma plataforma web de verificação de fatos 
+desenvolvida especificamente para adultos brasileiros com mais de 30 anos e alfabetização digital limitada, 
+visando à conscientização sobre o descarte correto de informações e o desenvolvimento do pensamento 
+crítico frente às notícias compartilhadas nas redes sociais.
+A crescente preocupação com questões de desinformação
+e a necessidade de formar cidadãos críticos justificam a
+implementação de ações educativas baseadas em
+tecnologia. Este projeto busca preencher essa lacuna,
+promovendo a alfabetização midiática e informacional
+desde a base educacional até a população em geral,
+especialmente considerando o cenário eleitoral brasileiro de
+2026.
+Foi desenvolvido um sistema de verificação que aceita texto ou URL e
+classifica automaticamente em quatro categorias (verdadeiro, falso,
+parcialmente verdadeiro ou não verificável), com nível de confiança de 0 a
+100% e explicação em linguagem acessível. A principal inovação consiste na
+análise automática de viés político das fontes consultadas. O sistema
+classifica cada fonte em esquerda, centro ou direita, utilizando mapeamento
+de mais de 50 veículos brasileiros incluindo G1, Folha, Estadão, Brasil 247,
+Jovem Pan e Gazeta do Povo. A visualização inspirada no Ground News
+apresenta gráfico com distribuição percentual, badges coloridos e links
+clicáveis para as fontes originais. O sistema foi validado com usuários reais
+acima de 30 anos através de testes de acessibilidade e usabilidade, incluindo
+autenticação e histórico pessoal de verificações.
+Promover educação midiática e pensamento crítico em
+adultos brasileiros (30+) através de verificação
+automatizada de notícias com análise de viés político
+das fontes, preparando a população para o cenário
+eleitoral de 2026.
+O ValidaÍ demonstrou eficácia na promoção da
+alfabetização midiática através de tecnologia acessível e
+educativa. Com a aproximação das eleições municipais e
+presidenciais de 2026, o projeto será expandido para
+incluir detecção de narrativas eleitorais em tempo real. O
+projeto constitui ferramenta essencial para a formação de
+cidadãos críticos e o combate à desinformação no cenário
+eleitoral brasileiro, promovendo uma sociedade mais
+consciente e preparada para discernir informações
+verdadeiras de falsas no ambiente digital.
+MATERIAL E MÉTODO
+O projeto utilizou Perplexity Sonar API para verificação
+factual com inteligência artificial, React e TypeScript para
+desenvolvimento de interface acessível, PostgreSQL para
+persistência de dados, e um banco customizado de mais
+de 50 veículos de mídia brasileiros classificados por
+espectro político. A metodologia incluiu pesquisa-ação
+com validação em tempo real junto ao público-alvo,
+interface adaptada para usuários com baixa alfabetização
+digital, e tooltips educativos escritos em linguagem
+simples.
+CONSIDERAÇÕES FINAIS
+Teste agora!
