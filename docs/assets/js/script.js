@@ -2,6 +2,44 @@
 // Smooth scrolling and interactive enhancements
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Sidebar functionality
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarClose = document.getElementById('sidebarClose');
+    
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    overlay.id = 'sidebarOverlay';
+    document.body.appendChild(overlay);
+    
+    // Toggle sidebar
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+    });
+    
+    // Close sidebar
+    sidebarClose.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    });
+    
+    // Close sidebar when clicking overlay
+    overlay.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    });
+    
+    // Close sidebar when clicking a menu link
+    const sidebarLinks = sidebar.querySelectorAll('.sidebar-menu a');
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+    });
+
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
