@@ -108,7 +108,7 @@ body {
 .logo-icon {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: white;
     color: white;
     display: flex;
     align-items: center;
@@ -117,6 +117,14 @@ body {
     font-weight: 700;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+.header-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: white;
 }
 
 .logo-text h1 {
@@ -1208,5 +1216,4 @@ body {
         width: 45px;
         height: 45px;
     }
-}
 }
